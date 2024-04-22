@@ -1,4 +1,5 @@
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.urls import reverse
 from .models import Category, Product
 
 # Create your tests here.
@@ -46,3 +47,18 @@ class ProductModelTest(TestCase):
     def test_available_default(self):
         product = Product.objects.get(id=1)
         self.assertTrue(product.available)
+
+
+class ProductListViewTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Create test category
+        Category.objects.create(name="Test Category", slug="test-category")
+        # Create test products
+        Product.objects.create(name="Test Product 1", slug="test-product-1", price=10.99)
+        Product.objects.create(name="Test Product 2", slug="test-product-2", price=20.99)
+
+    def test_product_list_view(self):
+        client = Client()
+        response = client.get(reverse("product_list"))
+        self.assertEqual(response.status_code, 200)
