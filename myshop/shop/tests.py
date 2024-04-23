@@ -22,6 +22,7 @@ class CategoryModelTest(TestCase):
     def test_verbose_name_plural(self):
         self.assertEqual(str(Category._meta.verbose_name_plural), "categories")
 
+
 class ProductModelTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -55,10 +56,51 @@ class ProductListViewTest(TestCase):
         # Create test category
         Category.objects.create(name="Test Category", slug="test-category")
         # Create test products
-        Product.objects.create(name="Test Product 1", slug="test-product-1", price=10.99)
-        Product.objects.create(name="Test Product 2", slug="test-product-2", price=20.99)
+        Product.objects.create(category_id=1, name="Test Product 1", slug="test-product-1", price=10.99)
+        Product.objects.create(category_id=1, name="Test Product 2", slug="test-product-2", price=20.99)
 
-    def test_product_list_view(self):
+    def test_product_list_view_without_category(self):
         client = Client()
-        response = client.get(reverse("product_list"))
+        response = client.get(reverse("shop:product_list"))
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed("shop/product/list.html")
+    
+    def test_product_list_view_with_valid_category(self):
+        client = Client()
+        category_slug = "test-category"
+        response = client.get(reverse("shop:product_list_by_category", kwargs={"category_slug": category_slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "shop/product/list.html")
+
+    def test_product_list_view_with_invalid_category(self):
+        client = Client()
+        category_slug = "invalid-category"
+        response = client.get(reverse("shop:product_list_by_category", kwargs={"category_slug": category_slug}))
+        self.assertEqual(response.status_code, 404) # Expecting 404 Not Found
+
+
+class ProductDetailViewTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # Create test category
+        Category.objects.create(name="Test Category", slug="test-category")
+        # Create test products
+        Product.objects.create(category_id=1, name="Test Product", slug="test-product", price=10.99)
+
+    def test_product_detail_view_with_valid_product(self):
+        client = Client()
+        product = Product.objects.get(slug="test-product")
+        response = client.get(reverse("shop:product_detail", kwargs={"id": product.id, "slug": product.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "shop/product/detail.html")
+    
+    def test_product_detail_view_with_invalid_product_id(self):
+        client = Client()
+        response = client.get(reverse("shop:product_detail", kwargs={"id": 9999, "slug": "test-product"}))
+        self.assertEqual(response.status_code, 404) # Expecting 404 Not Found
+
+    def test_product_view_with_invalid_product_slug(self):
+        client = Client()
+        product = Product.objects.get(slug="test-product")
+        response = client.get(reverse("shop:product_detail", kwargs={"id": product.id, "slug": "invalid-slug"}))
+        self.assertEqual(response.status_code, 404) # Expecting 404 Not Found
